@@ -1,0 +1,141 @@
+let video
+let pred = []
+let wristRX, wristRY
+let prevWristRX = 0
+let prevWristRY = 0 
+let prevWristLX = 0 
+let prevWristLY = 0 
+let wristLX, wristLY
+let noseX, noseY 
+let prevNoseX = 300
+let prevNoseY = 500
+
+let cat, dog, bird, bgm 
+let play_button
+
+function preload(){
+  cat = loadSound('cat.wav')
+  dog = loadSound('dog.wav')
+  drum = loadSound('drum.wav')
+  bird = loadSound('bird.wav')
+  bgm = loadSound('bgm.mp3')
+}
+
+function setup() {
+  
+  createCanvas(600, 500);
+  video = createCapture(VIDEO)
+  video.size(600, 500)
+  frameRate(15)
+  video.hide()
+  
+  noseSynth = new p5.MonoSynth();
+  // noseSynth = new p5.PolySynth();
+
+  
+  let poseFinder = ml5.poseNet(video, modelReady)
+  poseFinder.on("pose", (result) => {
+    let pred = result;
+    if (pred.length > 0) {
+      gotPose(pred)
+      // console.log(pred)
+    } else {
+      console.log("no pose detected")
+    }
+  }) 
+}
+
+function draw() {
+  
+  background(220);
+  image(video, 0, 0, 600, 500)
+  fill(255, 0, 0)
+  ellipse(wristRX, wristRY, 60)
+  fill(0, 255, 0)
+  ellipse(wristLX, wristLY, 60)
+  fill(0, 0, 255)
+  ellipse(noseX, noseY, 40)
+  fill(0, 255, 255)
+
+}
+
+function modelReady() {
+  console.log("Model ready!");
+}
+
+function gotPose(poses){
+  
+  let keypoints = ["nose", "leftWrist", "rightWrist"]
+  noseX = poses[0].pose.nose.x
+  noseY = poses[0].pose.nose.y
+  wristLX = poses[0].pose.leftWrist.x
+  wristLY = poses[0].pose.leftWrist.y
+  wristRX = poses[0].pose.rightWrist.x
+  wristRY = poses[0].pose.rightWrist.y
+  
+  if (poses[0].pose.nose.confidence > 0.5) {
+    // console.log("Nose:",noseX,noseY)
+    motionX = abs(noseX - prevNoseX)
+    motionY = abs(noseY - prevNoseY)
+    dis = sqrt(pow(motionX, 2)+pow(motionY, 2))
+    prevNoseY = noseY
+    prevNoseX = noseX
+    console.log("nose moved:", dis)
+    if (dis >= 3) {
+      console.log("movement detected")
+      playSynth(dis)
+    }
+    // calcDis(noseX, noseY, prevNoseX, prevNoseY)
+  }
+  if (poses[0].pose.leftWrist.confidence > 0.2) {
+    // console.log("Left wrist:",wristLX,wristLY)
+    motionX = abs(wristLX - prevWristLX)
+    motionY = abs(wristLY - prevWristLY)
+    dis = sqrt(pow(motionX, 2)+pow(motionY, 2))
+    prevwristLX = wristLX
+    prevwristLY = wristLY
+    console.log("left wrist moved:", dis)
+    if (dis >= 100) {
+      console.log("movement detected")
+      playSound(dog, 1)
+    }
+    
+    // calcDis(wristLX, wristLY, prevWristLX, prevWristLY)
+  }
+  if (poses[0].pose.rightWrist.confidence > 0.2) {
+    // console.log("Right wrist:",wristRX,wristRY)
+    motionX = abs(wristRX - prevWristRX)
+    motionY = abs(wristRY - prevWristRY)
+    dis = sqrt(pow(motionX, 2)+pow(motionY, 2))
+    prevwristRX = wristRX
+    prevwristRY = wristRY
+    console.log("right wrist moved:", dis)
+    if (dis >= 150) {
+      console.log("movement detected")
+      playSound(bird, 1)
+    }
+  }  
+}
+
+function playSound(sound, rate){
+  if (!sound.isPlaying()) {
+    sound.play()
+    sound.rate(rate);
+  }
+}
+
+function playSynth(dis) {
+  userStartAudio();
+  let noseNote = random(['Fb4', 'G4']);
+  let rWristNote = random(['F3', 'E4']);
+  let lWristNote = random(['D4', 'D3']);
+
+  // note velocity (volume, from 0 to 1)
+  let velocity = random();
+  // time from now (in seconds)
+  let time = 0;
+  // note duration (in seconds)
+  let dur = 1/6;
+
+  noseSynth.play(noseNote, velocity, time, dur);
+}
